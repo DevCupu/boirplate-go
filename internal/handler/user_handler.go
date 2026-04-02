@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/DevCupu/boirplate-go/internal/model"
+	"github.com/DevCupu/boirplate-go/internal/service"
+	"github.com/DevCupu/boirplate-go/pkg/logger"
 	"github.com/gin-gonic/gin"
-	"boilerplate-go/internal/model"
-	"boilerplate-go/internal/service"
-	"boilerplate-go/pkg/logger"
 )
 
 // UserHandler handle HTTP request untuk user
@@ -27,14 +27,14 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	var req model.CreateUserRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Warn("Invalid request body", )
+		logger.Warn("Invalid request body")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
 	user, err := h.userService.CreateUser(&req)
 	if err != nil {
-		logger.Error("Failed to create user", )
+		logger.Error("Failed to create user")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -51,7 +51,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 
 	user, err := h.userService.GetUserByID(id)
 	if err != nil {
-		logger.Warn("User not found", )
+		logger.Warn("User not found")
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
@@ -82,7 +82,7 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 
 	users, total, err := h.userService.GetAllUsers(limit, offset)
 	if err != nil {
-		logger.Error("Failed to get users", )
+		logger.Error("Failed to get users")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -104,14 +104,14 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	var req model.UpdateUserRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Warn("Invalid request body", )
+		logger.Warn("Invalid request body")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
 	user, err := h.userService.UpdateUser(id, &req)
 	if err != nil {
-		logger.Warn("Failed to update user", )
+		logger.Warn("Failed to update user")
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
@@ -128,7 +128,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 	err := h.userService.DeleteUser(id)
 	if err != nil {
-		logger.Warn("Failed to delete user", )
+		logger.Warn("Failed to delete user")
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}

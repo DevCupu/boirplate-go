@@ -1,4 +1,4 @@
-module boilerplate-go
+module github.com/DevCupu/boirplate-go
 
 go 1.21
 

@@ -3,10 +3,10 @@ package service
 import (
 	"fmt"
 
+	"github.com/DevCupu/boirplate-go/internal/model"
+	"github.com/DevCupu/boirplate-go/internal/repository"
+	"github.com/DevCupu/boirplate-go/pkg/logger"
 	"github.com/google/uuid"
-	"boilerplate-go/internal/model"
-	"boilerplate-go/internal/repository"
-	"boilerplate-go/pkg/logger"
 )
 
 // UserService interface untuk user business logic
@@ -35,7 +35,7 @@ func (s *userService) CreateUser(req *model.CreateUserRequest) (*model.UserRespo
 	// Cek apakah email sudah terdaftar
 	existingUser, _ := s.userRepo.GetByEmail(req.Email)
 	if existingUser != nil {
-		logger.Warn("Email already registered", )
+		logger.Warn("Email already registered")
 		return nil, fmt.Errorf("email already registered")
 	}
 
@@ -50,7 +50,7 @@ func (s *userService) CreateUser(req *model.CreateUserRequest) (*model.UserRespo
 		return nil, err
 	}
 
-	logger.Info("User created successfully via service", )
+	logger.Info("User created successfully via service")
 	return user.ToResponse(), nil
 }
 
@@ -108,7 +108,7 @@ func (s *userService) UpdateUser(id string, req *model.UpdateUserRequest) (*mode
 		return nil, err
 	}
 
-	logger.Info("User updated successfully via service", )
+	logger.Info("User updated successfully via service")
 	return user.ToResponse(), nil
 }
 

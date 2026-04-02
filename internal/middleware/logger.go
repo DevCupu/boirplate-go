@@ -3,9 +3,9 @@ package middleware
 import (
 	"time"
 
+	"github.com/DevCupu/boirplate-go/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"boilerplate-go/pkg/logger"
 )
 
 // LoggerMiddleware logs HTTP requests

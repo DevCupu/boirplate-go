@@ -5,8 +5,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/DevCupu/boirplate-go/pkg/logger"
 	"github.com/joho/godotenv"
-	"boilerplate-go/pkg/logger"
 )
 
 type Config struct {
@@ -90,7 +90,7 @@ func getEnvInt(key string, defaultVal int) int {
 
 	intVal, err := strconv.Atoi(val)
 	if err != nil {
-		logger.Warn("Failed to convert env to int", )
+		logger.Warn("Failed to convert env to int")
 		return defaultVal
 	}
 	return intVal

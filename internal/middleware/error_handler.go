@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"boilerplate-go/pkg/logger"
+	"github.com/DevCupu/boirplate-go/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )

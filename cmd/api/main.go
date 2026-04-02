@@ -9,13 +9,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DevCupu/boirplate-go/internal/config"
+	"github.com/DevCupu/boirplate-go/internal/handler"
+	"github.com/DevCupu/boirplate-go/internal/middleware"
+	"github.com/DevCupu/boirplate-go/internal/repository"
+	"github.com/DevCupu/boirplate-go/internal/service"
+	"github.com/DevCupu/boirplate-go/pkg/logger"
 	"github.com/gin-gonic/gin"
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/handler"
-	"boilerplate-go/internal/middleware"
-	"boilerplate-go/internal/repository"
-	"boilerplate-go/internal/service"
-	"boilerplate-go/pkg/logger"
 )
 
 func main() {
@@ -32,17 +32,17 @@ func main() {
 	// Initialize database
 	db, err := config.InitDatabase(cfg)
 	if err != nil {
-		logger.Fatal("Failed to initialize database", )
+		logger.Fatal("Failed to initialize database")
 		os.Exit(1)
 	}
 
 	// Auto migrate models
 	err = db.AutoMigrate(
-		// Add your models here
-		// &model.User{},
+	// Add your models here
+	// &model.User{},
 	)
 	if err != nil {
-		logger.Fatal("Failed to run migrations", )
+		logger.Fatal("Failed to run migrations")
 		os.Exit(1)
 	}
 
@@ -70,7 +70,7 @@ func main() {
 	go func() {
 		logger.Info("Server starting on port " + cfg.AppPort)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("Server failed", )
+			logger.Fatal("Server failed")
 			os.Exit(1)
 		}
 	}()
@@ -86,7 +86,7 @@ func main() {
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		logger.Error("Server forced to shutdown", )
+		logger.Error("Server forced to shutdown")
 		os.Exit(1)
 	}
 

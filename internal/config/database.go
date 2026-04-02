@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"boilerplate-go/pkg/logger"
+	"github.com/DevCupu/boirplate-go/pkg/logger"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
