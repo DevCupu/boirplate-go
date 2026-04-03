@@ -28,6 +28,9 @@ type Config struct {
 
 	// Cors
 	CorsAllowOrigins string
+
+	// JWT
+	JWTSecret string
 }
 
 // LoadConfig membaca konfigurasi dari environment
@@ -41,12 +44,12 @@ func LoadConfig() *Config {
 		AppEnv:  getEnv("APP_ENV", "development"),
 		AppPort: getEnv("APP_PORT", "8080"),
 
-		// Database
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "boilerplate_go"),
+		// Database - No hardcoded passwords, use from .env
+		DBHost:     getEnvRequired("DB_HOST"),
+		DBPort:     getEnvRequired("DB_PORT"),
+		DBUser:     getEnvRequired("DB_USER"),
+		DBPassword: getEnvRequired("DB_PASSWORD"),
+		DBName:     getEnvRequired("DB_NAME"),
 		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
 
 		// Server
@@ -54,6 +57,9 @@ func LoadConfig() *Config {
 
 		// Cors
 		CorsAllowOrigins: getEnv("CORS_ALLOW_ORIGINS", "*"),
+
+		// JWT - Load from env (required in production)
+		JWTSecret: getEnvRequired("JWT_SECRET"),
 	}
 
 	logger.Info("Configuration loaded successfully")
@@ -94,4 +100,15 @@ func getEnvInt(key string, defaultVal int) int {
 		return defaultVal
 	}
 	return intVal
+}
+
+// getEnvRequired membaca environment variable yang WAJIB ada
+func getEnvRequired(key string) string {
+	if value, exists := os.LookupEnv(key); exists && value != "" {
+		return value
+	}
+
+	logger.Fatal("Required environment variable not found: " + key)
+	os.Exit(1)
+	return ""
 }

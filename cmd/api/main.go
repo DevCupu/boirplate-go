@@ -10,10 +10,11 @@ import (
 	"time"
 
 	"github.com/DevCupu/boirplate-go/internal/config"
-	"github.com/DevCupu/boirplate-go/internal/handler"
+	"github.com/DevCupu/boirplate-go/internal/controllers"
 	"github.com/DevCupu/boirplate-go/internal/middleware"
 	"github.com/DevCupu/boirplate-go/internal/repository"
 	"github.com/DevCupu/boirplate-go/internal/service"
+	"github.com/DevCupu/boirplate-go/pkg/auth"
 	"github.com/DevCupu/boirplate-go/pkg/logger"
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +22,9 @@ import (
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
+
+	// Initialize JWT with secret from env
+	auth.InitJWT(cfg.JWTSecret)
 
 	// Initialize logger
 	if err := logger.InitLogger(cfg.AppEnv); err != nil {
@@ -52,11 +56,11 @@ func main() {
 	// Initialize services
 	userService := service.NewUserService(userRepo)
 
-	// Initialize handlers
-	userHandler := handler.NewUserHandler(userService)
+	// Initialize controllers
+	userController := controllers.NewUserController(userService)
 
 	// Setup router
-	router := setupRouter(cfg, userHandler)
+	router := setupRouter(cfg, userController)
 
 	// Create server
 	srv := &http.Server{
@@ -94,41 +98,50 @@ func main() {
 }
 
 // setupRouter mengatur route aplikasi
-func setupRouter(cfg *config.Config, userHandler *handler.UserHandler) *gin.Engine {
+func setupRouter(cfg *config.Config, userController *controllers.UserController) *gin.Engine {
 	// Set environment
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
-	} else {
-		gin.SetMode(gin.DebugMode)
 	}
 
-	router := gin.New()
+	router := gin.Default()
 
-	// Middleware
-	router.Use(middleware.LoggerMiddleware())
+	// Middleware global
 	router.Use(middleware.CORSMiddleware(cfg.CorsAllowOrigins))
 	router.Use(middleware.ErrorHandlerMiddleware())
-	router.Use(gin.Recovery())
+	router.Use(middleware.LoggerMiddleware())
 
-	// Health check
+	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"status": "OK",
-			"time":   time.Now(),
+			"status": "ok",
+			"app":    cfg.AppName,
 		})
 	})
 
-	// API v1
-	v1 := router.Group("/api/v1")
+	// ==================== PUBLIC ROUTES ====================
+
+	// Auth routes (public - tidak perlu authentication)
+	auth := router.Group("/api/v1/auth")
 	{
-		// User routes
-		users := v1.Group("/users")
+		auth.POST("/register", userController.CreateUser)
+		auth.POST("/login", userController.Login)
+	}
+
+	// ==================== USER ROUTES ====================
+
+	users := router.Group("/api/v1/users")
+	{
+		// Public routes (tidak perlu authentication)
+		users.GET("", userController.GetAllUsers)
+		users.GET("/:id", userController.GetUser)
+
+		// Protected routes (perlu authentication)
+		protected := users.Use(middleware.AuthMiddleware())
 		{
-			users.POST("", userHandler.CreateUser)
-			users.GET("", userHandler.GetAllUsers)
-			users.GET("/:id", userHandler.GetUser)
-			users.PUT("/:id", userHandler.UpdateUser)
-			users.DELETE("/:id", userHandler.DeleteUser)
+			protected.POST("", userController.CreateUser)
+			protected.PUT("/:id", userController.UpdateUser)
+			protected.DELETE("/:id", userController.DeleteUser)
 		}
 	}
 

@@ -8,6 +8,12 @@ DOCKER_CONTAINER=$(APP_NAME)_app
 # Variables
 MAIN_PATH=cmd/api
 
+# Load .env file if it exists
+ifneq (,$(wildcard .env))
+    include .env
+    export $(shell sed 's/=.*//' .env)
+endif
+
 help: ## Display this help screen
 	@grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
@@ -107,7 +113,7 @@ migrate-create-%: ## Create a new migration file. Usage: make migrate-create-use
 migrate-up: ## Run all migrations
 	@echo "Running migrations up..."
 	@if command -v migrate > /dev/null; then \
-		migrate -path ./migrations -database "postgres://postgres:postgres@localhost:5432/boilerplate_go?sslmode=disable" up; \
+		migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)" up; \
 	else \
 		echo "migrate not installed. Install it with: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest"; \
 	fi
@@ -115,14 +121,14 @@ migrate-up: ## Run all migrations
 migrate-down: ## Rollback migrations
 	@echo "Running migrations down..."
 	@if command -v migrate > /dev/null; then \
-		migrate -path ./migrations -database "postgres://postgres:postgres@localhost:5432/boilerplate_go?sslmode=disable" down; \
+		migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)" down; \
 	else \
 		echo "migrate not installed. Install it with: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest"; \
 	fi
 
 migrate-version: ## Check migration version
 	@if command -v migrate > /dev/null; then \
-		migrate -path ./migrations -database "postgres://postgres:postgres@localhost:5432/boilerplate_go?sslmode=disable" version; \
+		migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)" version; \
 	else \
 		echo "migrate not installed."; \
 	fi
