@@ -17,27 +17,6 @@ func NewUserController(service service.UserService) *UserController {
 	return &UserController{service: service}
 }
 
-// CreateUser membuat user baru atau register
-// POST /api/v1/users atau /api/v1/auth/register
-func (u *UserController) CreateUser(c *gin.Context) {
-	var req dto.UserCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Warn("Invalid request body: " + err.Error())
-		dto.ErrorJSON(c, http.StatusBadRequest, "Invalid request", err.Error())
-		return
-	}
-
-	user, err := u.service.CreateUser(req.Name, req.Email, req.Phone, req.Password)
-	if err != nil {
-		logger.Error("Failed to create user: " + err.Error())
-		dto.ErrorJSON(c, http.StatusBadRequest, "Failed to create user", err.Error())
-		return
-	}
-
-	response := dto.ToUserResponse(user.ID, user.Name, user.Email, user.Phone, user.IsActive, user.LastLogin, user.CreatedAt, user.UpdatedAt)
-	dto.SuccessJSON(c, http.StatusCreated, "User created successfully", response)
-}
-
 // GetUser mendapatkan user berdasarkan ID
 // GET /api/v1/users/:id
 func (u *UserController) GetUser(c *gin.Context) {
@@ -76,28 +55,52 @@ func (u *UserController) GetAllUsers(c *gin.Context) {
 	dto.SuccessJSON(c, http.StatusOK, "Users retrieved successfully", response)
 }
 
-// UpdateUser mengupdate user
+// UpdateProfile mengupdate profile user
 // PUT /api/v1/users/:id
-func (u *UserController) UpdateUser(c *gin.Context) {
+func (u *UserController) UpdateProfile(c *gin.Context) {
 	id := c.Param("id")
 
-	var req dto.UserUpdateRequest
+	var req dto.UserUpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("Invalid request body: " + err.Error())
 		dto.ErrorJSON(c, http.StatusBadRequest, "Invalid request", err.Error())
 		return
 	}
 
-	user, err := u.service.UpdateUser(id, req.Name, req.Email, req.Phone, req.Password)
+	user, err := u.service.UpdateProfile(id, &req)
 	if err != nil {
-		logger.Error("Failed to update user: " + err.Error())
-		dto.ErrorJSON(c, http.StatusBadRequest, "Failed to update user", err.Error())
+		logger.Error("Failed to update profile: " + err.Error())
+		dto.ErrorJSON(c, http.StatusBadRequest, "Failed to update profile", err.Error())
 		return
 	}
 
 	response := dto.ToUserResponse(user.ID, user.Name, user.Email, user.Phone, user.IsActive, user.LastLogin, user.CreatedAt, user.UpdatedAt)
-	dto.SuccessJSON(c, http.StatusOK, "User updated successfully", response)
+	dto.SuccessJSON(c, http.StatusOK, "Profile updated successfully", response)
 }
+
+// ChangePassword mengubah password user
+// POST /api/v1/users/:id/change-password
+func (u *UserController) ChangePassword(c *gin.Context) {
+	id := c.Param("id")
+
+	var req dto.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("Invalid request body: " + err.Error())
+		dto.ErrorJSON(c, http.StatusBadRequest, "Invalid request", err.Error())
+		return
+	}
+
+	if err := u.service.ChangePassword(id, &req); err != nil {
+		logger.Warn("Failed to change password: " + err.Error())
+		dto.ErrorJSON(c, http.StatusBadRequest, "Failed to change password", err.Error())
+		return
+	}
+
+	dto.SuccessEmptyJSON(c, http.StatusOK, "Password changed successfully")
+}
+
+// UpdateUser deprecated: use UpdateProfile atau ChangePassword
+// Deprecated untuk compatibility, tidak digunakan di routes
 
 // DeleteUser menghapus user
 // DELETE /api/v1/users/:id
@@ -111,32 +114,4 @@ func (u *UserController) DeleteUser(c *gin.Context) {
 	}
 
 	dto.SuccessEmptyJSON(c, http.StatusOK, "User deleted successfully")
-}
-
-// Login authenticate user
-// POST /api/v1/auth/login
-func (u *UserController) Login(c *gin.Context) {
-	var req dto.UserLoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Warn("Invalid login request: " + err.Error())
-		dto.ErrorJSON(c, http.StatusBadRequest, "Invalid request", err.Error())
-		return
-	}
-
-	token, user, err := u.service.Login(req.Email, req.Password)
-	if err != nil {
-		logger.Warn("Login failed: " + err.Error())
-		dto.ErrorJSON(c, http.StatusUnauthorized, "Login failed", err.Error())
-		return
-	}
-
-	userResp := dto.ToUserResponse(user.ID, user.Name, user.Email, user.Phone, user.IsActive, user.LastLogin, user.CreatedAt, user.UpdatedAt)
-	response := dto.UserLoginResponse{
-		Token:     token,
-		ExpiresIn: 24,
-		TokenType: "Bearer",
-		User:      userResp,
-	}
-
-	dto.SuccessJSON(c, http.StatusOK, "Login successful", response)
 }

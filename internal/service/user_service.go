@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	"time"
 
+	"github.com/DevCupu/boirplate-go/internal/dto"
 	"github.com/DevCupu/boirplate-go/internal/model"
 	"github.com/DevCupu/boirplate-go/internal/repository"
 	"github.com/DevCupu/boirplate-go/pkg/auth"
@@ -13,12 +13,12 @@ import (
 
 // UserService interface untuk user service
 type UserService interface {
-	CreateUser(name, email, phone, password string) (*model.User, error)
+	CreateUser(req *dto.RegisterRequest) (*model.User, error)
 	GetUserByID(id string) (*model.User, error)
 	GetAllUsers() ([]model.User, error)
-	UpdateUser(id, name, email, phone, password string) (*model.User, error)
+	UpdateProfile(id string, req *dto.UserUpdateProfileRequest) (*model.User, error)
+	ChangePassword(id string, req *dto.ChangePasswordRequest) error
 	DeleteUser(id string) error
-	Login(email, password string) (string, *model.User, error)
 }
 
 // userService implementasi dari UserService
@@ -31,15 +31,16 @@ func NewUserService(repo repository.UserRepository) UserService {
 	return &userService{repo: repo}
 }
 
-// CreateUser membuat user baru
-func (s *userService) CreateUser(name, email, phone, password string) (*model.User, error) {
+// CreateUser membuat user baru dari request
+func (s *userService) CreateUser(req *dto.RegisterRequest) (*model.User, error) {
 	// Validasi email belum terdaftar
-	if s.repo.ExistsByEmail(email) {
+	if s.repo.ExistsByEmail(req.Email) {
+		logger.Warn("Email already registered: " + req.Email)
 		return nil, fmt.Errorf("email already registered")
 	}
 
 	// Hash password
-	hashedPassword, err := auth.HashPassword(password)
+	hashedPassword, err := auth.HashPassword(req.Password)
 	if err != nil {
 		logger.Error("Failed to hash password")
 		return nil, fmt.Errorf("failed to hash password")
@@ -47,9 +48,9 @@ func (s *userService) CreateUser(name, email, phone, password string) (*model.Us
 
 	user := &model.User{
 		ID:       uuid.New().String(),
-		Name:     name,
-		Email:    email,
-		Phone:    phone,
+		Name:     req.Name,
+		Email:    req.Email,
+		Phone:    req.Phone,
 		Password: hashedPassword,
 		IsActive: true,
 	}
@@ -83,42 +84,65 @@ func (s *userService) GetAllUsers() ([]model.User, error) {
 	return users, nil
 }
 
-// UpdateUser mengupdate user
-func (s *userService) UpdateUser(id, name, email, phone, password string) (*model.User, error) {
+// UpdateProfile mengupdate profile user (name, email, phone)
+func (s *userService) UpdateProfile(id string, req *dto.UserUpdateProfileRequest) (*model.User, error) {
 	user, err := s.repo.GetByID(id)
 	if err != nil {
 		logger.Warn("User not found: " + id)
 		return nil, fmt.Errorf("user not found")
 	}
 
-	user.Name = name
-	user.Phone = phone
+	user.Name = req.Name
+	user.Phone = req.Phone
 
 	// Validasi email jika berubah
-	if user.Email != email {
-		if s.repo.ExistsByEmail(email) {
+	if user.Email != req.Email {
+		if s.repo.ExistsByEmail(req.Email) {
+			logger.Warn("Email already registered: " + req.Email)
 			return nil, fmt.Errorf("email already registered")
 		}
-		user.Email = email
-	}
-
-	// Update password jika diberikan
-	if password != "" {
-		hashedPassword, err := auth.HashPassword(password)
-		if err != nil {
-			logger.Error("Failed to hash password")
-			return nil, fmt.Errorf("failed to hash password")
-		}
-		user.Password = hashedPassword
+		user.Email = req.Email
 	}
 
 	if err := s.repo.Update(user); err != nil {
-		logger.Error("Failed to update user: " + err.Error())
-		return nil, fmt.Errorf("failed to update user")
+		logger.Error("Failed to update profile: " + err.Error())
+		return nil, fmt.Errorf("failed to update profile")
 	}
 
-	logger.Info("User updated successfully: " + id)
+	logger.Info("User profile updated successfully: " + id)
 	return user, nil
+}
+
+// ChangePassword mengubah password user dengan verifikasi password lama
+func (s *userService) ChangePassword(id string, req *dto.ChangePasswordRequest) error {
+	user, err := s.repo.GetByID(id)
+	if err != nil {
+		logger.Warn("User not found: " + id)
+		return fmt.Errorf("user not found")
+	}
+
+	// Verify old password
+	if !auth.VerifyPassword(user.Password, req.OldPassword) {
+		logger.Warn("Change password failed: invalid old password - " + id)
+		return fmt.Errorf("invalid old password")
+	}
+
+	// Hash new password
+	hashedPassword, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		logger.Error("Failed to hash password")
+		return fmt.Errorf("failed to hash password")
+	}
+
+	// Update password
+	user.Password = hashedPassword
+	if err := s.repo.Update(user); err != nil {
+		logger.Error("Failed to change password: " + err.Error())
+		return fmt.Errorf("failed to change password")
+	}
+
+	logger.Info("User password changed successfully: " + id)
+	return nil
 }
 
 // DeleteUser menghapus user
@@ -136,42 +160,4 @@ func (s *userService) DeleteUser(id string) error {
 
 	logger.Info("User deleted successfully: " + id)
 	return nil
-}
-
-// Login authenticate user dan generate token
-func (s *userService) Login(email, password string) (string, *model.User, error) {
-	// Cari user berdasarkan email
-	user, err := s.repo.GetByEmail(email)
-	if err != nil {
-		logger.Warn("Login failed: user not found")
-		return "", nil, fmt.Errorf("invalid email or password")
-	}
-
-	// Cek apakah user aktif
-	if !user.IsActive {
-		logger.Warn("Login failed: user inactive")
-		return "", nil, fmt.Errorf("user account is inactive")
-	}
-
-	// Verify password
-	if !auth.VerifyPassword(user.Password, password) {
-		logger.Warn("Login failed: invalid password")
-		return "", nil, fmt.Errorf("invalid email or password")
-	}
-
-	// Generate token (24 jam)
-	token, err := auth.GenerateToken(user.ID, user.Email, 24)
-	if err != nil {
-		logger.Error("Failed to generate token: " + err.Error())
-		return "", nil, fmt.Errorf("failed to generate token")
-	}
-
-	// Update last login
-	now := time.Now()
-	user.LastLogin = &now
-	s.repo.Update(user)
-
-	logger.Info("User logged in: " + user.Email)
-
-	return token, user, nil
 }

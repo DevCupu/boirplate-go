@@ -52,15 +52,18 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	authRepo := repository.NewAuthRepository(userRepo) // ← pass userRepo (composition)
 
 	// Initialize services
+	authService := service.NewAuthService(authRepo)
 	userService := service.NewUserService(userRepo)
 
 	// Initialize controllers
+	authController := controllers.NewAuthController(authService)
 	userController := controllers.NewUserController(userService)
 
 	// Setup router
-	router := setupRouter(cfg, userController)
+	router := setupRouter(cfg, authController, userController)
 
 	// Create server
 	srv := &http.Server{
@@ -98,7 +101,7 @@ func main() {
 }
 
 // setupRouter mengatur route aplikasi
-func setupRouter(cfg *config.Config, userController *controllers.UserController) *gin.Engine {
+func setupRouter(cfg *config.Config, authController *controllers.AuthController, userController *controllers.UserController) *gin.Engine {
 	// Set environment
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -121,15 +124,16 @@ func setupRouter(cfg *config.Config, userController *controllers.UserController)
 
 	// ==================== PUBLIC ROUTES ====================
 
+	// ==================== AUTH ROUTES ====================
 	// Auth routes (public - tidak perlu authentication)
 	auth := router.Group("/api/v1/auth")
 	{
-		auth.POST("/register", userController.CreateUser)
-		auth.POST("/login", userController.Login)
+		auth.POST("/register", authController.Register)
+		auth.POST("/login", authController.Login)
 	}
 
 	// ==================== USER ROUTES ====================
-
+	// User routes (public read, protected write)
 	users := router.Group("/api/v1/users")
 	{
 		// Public routes (tidak perlu authentication)
@@ -139,8 +143,8 @@ func setupRouter(cfg *config.Config, userController *controllers.UserController)
 		// Protected routes (perlu authentication)
 		protected := users.Use(middleware.AuthMiddleware())
 		{
-			protected.POST("", userController.CreateUser)
-			protected.PUT("/:id", userController.UpdateUser)
+			protected.PUT("/:id", userController.UpdateProfile)                   // update profile (name, email, phone)
+			protected.POST("/:id/change-password", userController.ChangePassword) // change password
 			protected.DELETE("/:id", userController.DeleteUser)
 		}
 	}
